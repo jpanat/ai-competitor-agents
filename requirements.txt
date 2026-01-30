@@ -1,0 +1,19 @@
+# Core LangChain dependencies
+langchain==0.1.0
+langchain-anthropic==0.1.1
+langgraph==0.0.20
+
+# Additional tools
+tavily-python==0.3.0  # For web search
+python-dotenv==1.0.0
+pydantic==2.5.0
+
+# API and utilities
+anthropic==0.18.0
+requests==2.31.0
+
+# Optional: For API server
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+streamlit==1.31.0
