@@ -25,9 +25,8 @@ from job_matcher.a2a.server import BaseA2AAgent
 from job_matcher.shared.config import (
     ANTHROPIC_API_KEY,
     DEFAULT_MODEL,
-    DOCUMENT_MCP_PORT,
-    LINKEDIN_MCP_PORT,
     MAX_TOKENS,
+    MCP_URLS,
     PROFILE_PARSER_PORT,
 )
 
@@ -90,7 +89,7 @@ class ProfileParserAgent(BaseA2AAgent):
         # Call LinkedIn MCP server
         async with httpx.AsyncClient(timeout=30) as http:
             resp = await http.post(
-                f"http://localhost:{LINKEDIN_MCP_PORT}/",
+                f"{MCP_URLS['linkedin']}/",
                 json={
                     "jsonrpc": "2.0",
                     "id": "1",
@@ -182,7 +181,7 @@ Resume text:
         logger.info("Extracting text from PDF resume")
         async with httpx.AsyncClient(timeout=30) as http:
             resp = await http.post(
-                f"http://localhost:{DOCUMENT_MCP_PORT}/",
+                f"{MCP_URLS['document']}/",
                 json={
                     "jsonrpc": "2.0",
                     "id": "1",

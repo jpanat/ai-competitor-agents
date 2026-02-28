@@ -27,11 +27,10 @@ from job_matcher.a2a.server import BaseA2AAgent
 from job_matcher.shared.config import (
     ANTHROPIC_API_KEY,
     DEFAULT_MODEL,
-    JOB_BOARDS_MCP_PORT,
     JOB_DISCOVERY_PORT,
     MAX_JOBS_TO_DISCOVER,
     MAX_TOKENS,
-    MEMORY_MCP_PORT,
+    MCP_URLS,
 )
 
 logger = logging.getLogger(__name__)
@@ -147,7 +146,7 @@ Return ONLY a JSON array of 4 concise search strings, e.g.:
 
         async with httpx.AsyncClient(timeout=30) as http:
             resp = await http.post(
-                f"http://localhost:{JOB_BOARDS_MCP_PORT}/",
+                f"{MCP_URLS['job_boards']}/",
                 json={
                     "jsonrpc": "2.0", "id": "1",
                     "method": "tools/call",
@@ -162,7 +161,7 @@ Return ONLY a JSON array of 4 concise search strings, e.g.:
     async def _store_job(self, job: dict) -> None:
         async with httpx.AsyncClient(timeout=10) as http:
             await http.post(
-                f"http://localhost:{MEMORY_MCP_PORT}/",
+                f"{MCP_URLS['memory']}/",
                 json={
                     "jsonrpc": "2.0", "id": "1",
                     "method": "tools/call",
