@@ -52,21 +52,21 @@ def _url(port: int) -> str:
 
 
 AGENT_URLS: dict[str, str] = {
-    "orchestrator": _url(ORCHESTRATOR_PORT),
-    "profile_parser": _url(PROFILE_PARSER_PORT),
-    "job_discovery": _url(JOB_DISCOVERY_PORT),
-    "job_matcher": _url(JOB_MATCHER_PORT),
-    "resume_customizer": _url(RESUME_CUSTOMIZER_PORT),
-    "cover_letter": _url(COVER_LETTER_PORT),
-    "gap_analysis": _url(GAP_ANALYSIS_PORT),
-    "interview_prep": _url(INTERVIEW_PREP_PORT),
+    "orchestrator":    os.getenv("ORCHESTRATOR_URL",      _url(ORCHESTRATOR_PORT)),
+    "profile_parser":  os.getenv("PROFILE_PARSER_URL",    _url(PROFILE_PARSER_PORT)),
+    "job_discovery":   os.getenv("JOB_DISCOVERY_URL",     _url(JOB_DISCOVERY_PORT)),
+    "job_matcher":     os.getenv("JOB_MATCHER_URL",       _url(JOB_MATCHER_PORT)),
+    "resume_customizer": os.getenv("RESUME_CUSTOMIZER_URL", _url(RESUME_CUSTOMIZER_PORT)),
+    "cover_letter":    os.getenv("COVER_LETTER_URL",      _url(COVER_LETTER_PORT)),
+    "gap_analysis":    os.getenv("GAP_ANALYSIS_URL",      _url(GAP_ANALYSIS_PORT)),
+    "interview_prep":  os.getenv("INTERVIEW_PREP_URL",    _url(INTERVIEW_PREP_PORT)),
 }
 
 MCP_URLS: dict[str, str] = {
-    "linkedin": _url(LINKEDIN_MCP_PORT),
-    "job_boards": _url(JOB_BOARDS_MCP_PORT),
-    "document": _url(DOCUMENT_MCP_PORT),
-    "memory": _url(MEMORY_MCP_PORT),
+    "linkedin":   os.getenv("LINKEDIN_MCP_URL",   _url(LINKEDIN_MCP_PORT)),
+    "job_boards": os.getenv("JOB_BOARDS_MCP_URL", _url(JOB_BOARDS_MCP_PORT)),
+    "document":   os.getenv("DOCUMENT_MCP_URL",   _url(DOCUMENT_MCP_PORT)),
+    "memory":     os.getenv("MEMORY_MCP_URL",     _url(MEMORY_MCP_PORT)),
 }
 
 # ---------------------------------------------------------------------------
