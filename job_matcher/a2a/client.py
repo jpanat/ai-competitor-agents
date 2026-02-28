@@ -160,7 +160,7 @@ class A2AClient:
                 if task.status == TaskState.FAILED:
                     # Surface any error message from the task
                     error_msgs = [
-                        part.get("text", "")
+                        getattr(part, "text", "")
                         for msg in task.messages
                         if msg.role == "agent"
                         for part in (msg.parts if isinstance(msg.parts, list) else [])
