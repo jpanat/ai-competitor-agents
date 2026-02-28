@@ -1,0 +1,188 @@
+version: "3.9"
+
+# ─── Shared environment ───────────────────────────────────────────────────────
+x-common-env: &common-env
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+  MODEL_NAME:        ${MODEL_NAME:-claude-sonnet-4-6}
+  TAVILY_API_KEY:    ${TAVILY_API_KEY}
+  APIFY_API_KEY:     ${APIFY_API_KEY:-}
+  AGENT_HOST:        orchestrator   # service name for inter-container DNS
+
+x-agent-base: &agent-base
+  build:
+    context: ..
+    dockerfile: job_matcher/Dockerfile
+  restart: unless-stopped
+  networks:
+    - job_matcher_net
+
+# ─── Services ────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MCP Servers ──────────────────────────────────────────────────────────────
+
+  profile-mcp:
+    <<: *agent-base
+    command: python -m job_matcher.mcp_servers.profile_mcp.server
+    ports:
+      - "9001:9001"
+    environment:
+      <<: *common-env
+      PROFILE_MCP_PORT: 9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  job-board-mcp:
+    <<: *agent-base
+    command: python -m job_matcher.mcp_servers.job_board_mcp.server
+    ports:
+      - "9002:9002"
+    environment:
+      <<: *common-env
+      JOB_BOARD_MCP_PORT: 9002
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/health"]
+      interval: 10s
+
+  document-mcp:
+    <<: *agent-base
+    command: python -m job_matcher.mcp_servers.document_mcp.server
+    ports:
+      - "9003:9003"
+    environment:
+      <<: *common-env
+      DOCUMENT_MCP_PORT: 9003
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9003/health"]
+      interval: 10s
+
+  memory-mcp:
+    <<: *agent-base
+    command: python -m job_matcher.mcp_servers.memory_mcp.server
+    ports:
+      - "9004:9004"
+    environment:
+      <<: *common-env
+      MEMORY_MCP_PORT: 9004
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9004/health"]
+      interval: 10s
+
+  # ── LangGraph Agents (A2A) ────────────────────────────────────────────────────
+
+  profile-parser:
+    <<: *agent-base
+    command: python -m job_matcher.agents.profile_parser.server
+    ports:
+      - "8001:8001"
+    environment:
+      <<: *common-env
+      PROFILE_PARSER_PORT: 8001
+      PROFILE_MCP_PORT:    9001
+      MEMORY_MCP_PORT:     9004
+    depends_on:
+      profile-mcp: {condition: service_healthy}
+      memory-mcp:  {condition: service_healthy}
+
+  job-discovery:
+    <<: *agent-base
+    command: python -m job_matcher.agents.job_discovery.server
+    ports:
+      - "8002:8002"
+    environment:
+      <<: *common-env
+      JOB_DISCOVERY_PORT:  8002
+      JOB_BOARD_MCP_PORT:  9002
+      MEMORY_MCP_PORT:     9004
+    depends_on:
+      job-board-mcp: {condition: service_healthy}
+      memory-mcp:    {condition: service_healthy}
+
+  job-matcher:
+    <<: *agent-base
+    command: python -m job_matcher.agents.job_matcher.server
+    ports:
+      - "8003:8003"
+    environment:
+      <<: *common-env
+      JOB_MATCHER_PORT: 8003
+
+  resume-tailor:
+    <<: *agent-base
+    command: python -m job_matcher.agents.resume_tailor.server
+    ports:
+      - "8004:8004"
+    environment:
+      <<: *common-env
+      RESUME_TAILOR_PORT: 8004
+      DOCUMENT_MCP_PORT:  9003
+      MEMORY_MCP_PORT:    9004
+    depends_on:
+      document-mcp: {condition: service_healthy}
+      memory-mcp:   {condition: service_healthy}
+
+  cover-letter:
+    <<: *agent-base
+    command: python -m job_matcher.agents.cover_letter.server
+    ports:
+      - "8005:8005"
+    environment:
+      <<: *common-env
+      COVER_LETTER_PORT: 8005
+      DOCUMENT_MCP_PORT: 9003
+      MEMORY_MCP_PORT:   9004
+    depends_on:
+      document-mcp: {condition: service_healthy}
+      memory-mcp:   {condition: service_healthy}
+
+  gap-analysis:
+    <<: *agent-base
+    command: python -m job_matcher.agents.gap_analysis.server
+    ports:
+      - "8006:8006"
+    environment:
+      <<: *common-env
+      GAP_ANALYSIS_PORT: 8006
+
+  interview-prep:
+    <<: *agent-base
+    command: python -m job_matcher.agents.interview_prep.server
+    ports:
+      - "8007:8007"
+    environment:
+      <<: *common-env
+      INTERVIEW_PREP_PORT: 8007
+
+  # ── Orchestrator ──────────────────────────────────────────────────────────────
+
+  orchestrator:
+    <<: *agent-base
+    command: python -m job_matcher.orchestrator.server
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+      ORCHESTRATOR_PORT:   8000
+      PROFILE_PARSER_PORT: 8001
+      JOB_DISCOVERY_PORT:  8002
+      JOB_MATCHER_PORT:    8003
+      RESUME_TAILOR_PORT:  8004
+      COVER_LETTER_PORT:   8005
+      GAP_ANALYSIS_PORT:   8006
+      INTERVIEW_PREP_PORT: 8007
+    depends_on:
+      - profile-parser
+      - job-discovery
+      - job-matcher
+      - resume-tailor
+      - cover-letter
+      - gap-analysis
+      - interview-prep
+
+networks:
+  job_matcher_net:
+    driver: bridge
