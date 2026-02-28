@@ -176,7 +176,7 @@ services:
       ORCHESTRATOR_URL: "http://orchestrator:8000"
     depends_on:
       orchestrator:
-        condition: service_healthy
+        condition: service_started
 
   # ── Orchestrator (starts last, depends on all agents) ────────────────────────
 
