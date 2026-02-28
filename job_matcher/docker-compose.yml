@@ -164,6 +164,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Streamlit UI ─────────────────────────────────────────────────────────────
+
+  ui:
+    <<: *common
+    container_name: ui
+    command: streamlit run job_matcher/ui/app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      ORCHESTRATOR_URL: "http://orchestrator:8000"
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
   # ── Orchestrator (starts last, depends on all agents) ────────────────────────
 
   orchestrator:
