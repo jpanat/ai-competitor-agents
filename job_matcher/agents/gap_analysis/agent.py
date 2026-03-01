@@ -77,6 +77,19 @@ class GapAnalysisAgent(BaseA2AAgent):
         missing_skills = match.get("missing_skills", [])
         overall_score = match.get("overall_score", 0)
 
+        compact_profile = {
+            "full_name": profile.get("full_name", ""),
+            "current_title": profile.get("current_title", ""),
+            "years_of_experience": profile.get("years_of_experience", 0),
+            "skills": profile.get("skills", []),
+            "summary": profile.get("summary", "")[:500],
+            "experience": [
+                {"title": e.get("title",""), "company": e.get("company",""),
+                 "achievements": e.get("achievements", [])[:3]}
+                for e in profile.get("experience", [])[:4]
+            ],
+        }
+
         response = await claude.messages.create(
             model=DEFAULT_MODEL,
             max_tokens=MAX_TOKENS,
@@ -87,7 +100,7 @@ class GapAnalysisAgent(BaseA2AAgent):
 TASK: Perform a deep gap analysis between this candidate and job, then create an actionable roadmap.
 
 CANDIDATE PROFILE:
-{json.dumps(profile, indent=2)}
+{json.dumps(compact_profile)}
 
 TARGET JOB:
 Title: {job.get('title', '')}

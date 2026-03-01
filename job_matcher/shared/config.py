@@ -16,7 +16,7 @@ load_dotenv()
 
 ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "claude-sonnet-4-6")
-MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "4096"))
+MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "8192"))
 
 # ---------------------------------------------------------------------------
 # Agent ports  (each agent is an independent FastAPI service)

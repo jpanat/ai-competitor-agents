@@ -328,20 +328,14 @@ def _mock_jobs(query: str, location: str, source: str, n: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 async def search_indeed(query: str, location: str = "", max_results: int = 10, remote_only: bool = False) -> dict:
+    # JSearch (RapidAPI) only — Tavily returns search-results pages, not listings.
+    # Free-tier users get jobs via search_arbeitnow / search_remoteok instead.
     jobs = await _jsearch(query, location, max_results, remote_only=remote_only)
-    if not jobs:
-        jobs = await _tavily_job_search(query, location, "indeed", max_results)
-    if not jobs:
-        jobs = await _arbeitnow_search(query, max_results)
     return {"jobs": jobs, "source": "indeed", "total": len(jobs)}
 
 
 async def search_glassdoor(query: str, location: str = "", max_results: int = 10) -> dict:
     jobs = await _jsearch(query, location, max_results)
-    if not jobs:
-        jobs = await _tavily_job_search(query, location, "glassdoor", max_results)
-    if not jobs:
-        jobs = await _remoteok_search(query, max_results)
     return {"jobs": jobs, "source": "glassdoor", "total": len(jobs)}
 
 
@@ -350,10 +344,6 @@ async def search_linkedin_jobs(
     experience_level: str = "mid", remote_only: bool = False
 ) -> dict:
     jobs = await _jsearch(query, location, max_results, remote_only=remote_only)
-    if not jobs:
-        jobs = await _tavily_job_search(query, location, "linkedin", max_results)
-    if not jobs:
-        jobs = await _arbeitnow_search(query, max_results)
     return {"jobs": jobs, "source": "linkedin", "total": len(jobs)}
 
 

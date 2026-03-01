@@ -69,6 +69,27 @@ class ResumeCustmizerAgent(BaseA2AAgent):
             job.get("company", ""),
         )
 
+        compact_profile = {
+            "full_name": profile.get("full_name", ""),
+            "headline": profile.get("headline", ""),
+            "summary": profile.get("summary", "")[:600],
+            "current_title": profile.get("current_title", ""),
+            "years_of_experience": profile.get("years_of_experience", 0),
+            "skills": profile.get("skills", []),
+            "experience": [
+                {
+                    "title": e.get("title", ""), "company": e.get("company", ""),
+                    "start_date": e.get("start_date", ""), "end_date": e.get("end_date", ""),
+                    "description": e.get("description", "")[:300],
+                    "achievements": e.get("achievements", [])[:4],
+                    "skills_used": e.get("skills_used", []),
+                }
+                for e in profile.get("experience", [])[:5]
+            ],
+            "education": profile.get("education", []),
+            "certifications": profile.get("certifications", []),
+        }
+
         response = await claude.messages.create(
             model=DEFAULT_MODEL,
             max_tokens=MAX_TOKENS,
@@ -79,7 +100,7 @@ class ResumeCustmizerAgent(BaseA2AAgent):
 TASK: Rewrite the candidate's resume to be optimally tailored for the target job.
 
 CANDIDATE PROFILE:
-{json.dumps(profile, indent=2)}
+{json.dumps(compact_profile)}
 
 TARGET JOB:
 Title: {job.get('title', '')}

@@ -85,6 +85,7 @@ class ProfileParserAgent(BaseA2AAgent):
 
     async def _parse_linkedin(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         linkedin_url = input_data.get("linkedin_url", "")
+        resume_text = input_data.get("resume_text", "")
         logger.info("Fetching LinkedIn profile: %s", linkedin_url)
 
         # Call LinkedIn MCP server
@@ -103,15 +104,28 @@ class ProfileParserAgent(BaseA2AAgent):
             )
             data = resp.json()
 
-        profile = _parse_mcp_result(data)
+        try:
+            profile = _parse_mcp_result(data)
+        except Exception:
+            profile = {}
 
-        # Merge any extra fields from raw resume if provided
-        if input_data.get("resume_text"):
-            resume_profile = await self._parse_text(input_data["resume_text"])
-            # Resume skills / experience enrich the LinkedIn data
+        # If LinkedIn returned an empty profile (blocked/login page), fall back to resume text
+        linkedin_empty = not profile.get("skills") and not profile.get("full_name")
+        if linkedin_empty and resume_text:
+            logger.warning(
+                "LinkedIn fetch returned empty profile (likely login wall). "
+                "Falling back to resume_text parsing."
+            )
+            profile = await self._parse_text(resume_text)
+            profile["linkedin_url"] = linkedin_url
+            return profile
+
+        # Merge any extra fields from resume if provided alongside LinkedIn data
+        if resume_text:
+            resume_profile = await self._parse_text(resume_text)
             profile.setdefault("skills", [])
             profile["skills"] = list(set(profile["skills"] + resume_profile.get("skills", [])))
-            profile["raw_resume_text"] = input_data["resume_text"]
+            profile["raw_resume_text"] = resume_text
 
         profile["linkedin_url"] = linkedin_url
         return profile
