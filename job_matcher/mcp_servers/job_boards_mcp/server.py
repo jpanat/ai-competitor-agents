@@ -126,16 +126,20 @@ async def _jsearch(query: str, location: str, max_results: int, **filters) -> li
         params["remote_jobs_only"] = "true"
 
     async with httpx.AsyncClient(timeout=15) as http:
-        resp = await http.get(
-            "https://jsearch.p.rapidapi.com/search",
-            params=params,
-            headers={
-                "X-RapidAPI-Key": RAPIDAPI_KEY,
-                "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        try:
+            resp = await http.get(
+                "https://jsearch.p.rapidapi.com/search",
+                params=params,
+                headers={
+                    "X-RapidAPI-Key": RAPIDAPI_KEY,
+                    "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            logger.warning("JSearch API error: %s", exc)
+            return []
 
     jobs = []
     for item in data.get("data", [])[:max_results]:

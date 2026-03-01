@@ -73,9 +73,17 @@ MCP_URLS: dict[str, str] = {
 # External APIs
 # ---------------------------------------------------------------------------
 
-TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
-SERPAPI_KEY: str = os.getenv("SERPAPI_KEY", "")          # Alternative job-board scraping
-RAPIDAPI_KEY: str = os.getenv("RAPIDAPI_KEY", "")        # Indeed / Glassdoor via RapidAPI
+def _key(name: str) -> str:
+    """Return the env var value, or '' if it looks like an unfilled placeholder."""
+    val = os.getenv(name, "")
+    if val.endswith("...") or val in ("...", "tvly-...", "sk-ant-..."):
+        return ""
+    return val
+
+
+TAVILY_API_KEY: str = _key("TAVILY_API_KEY")
+SERPAPI_KEY: str = _key("SERPAPI_KEY")          # Alternative job-board scraping
+RAPIDAPI_KEY: str = _key("RAPIDAPI_KEY")        # Indeed / Glassdoor via RapidAPI
 
 # ---------------------------------------------------------------------------
 # Redis (used for shared blackboard state between agents)
