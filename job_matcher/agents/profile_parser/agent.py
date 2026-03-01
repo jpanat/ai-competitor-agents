@@ -29,6 +29,7 @@ from job_matcher.shared.config import (
     MCP_URLS,
     PROFILE_PARSER_PORT,
 )
+from job_matcher.shared.models import _extract_json, _parse_mcp_result
 
 logger = logging.getLogger(__name__)
 claude = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -102,8 +103,7 @@ class ProfileParserAgent(BaseA2AAgent):
             )
             data = resp.json()
 
-        content = data.get("result", {}).get("content", [{}])[0].get("text", "{}")
-        profile = json.loads(content)
+        profile = _parse_mcp_result(data)
 
         # Merge any extra fields from raw resume if provided
         if input_data.get("resume_text"):
@@ -167,9 +167,7 @@ Resume text:
 {text[:6000]}""",
             }],
         )
-        raw = response.content[0].text
-        raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("```").strip()
-        profile = json.loads(raw)
+        profile = _extract_json(response.content[0].text)
         profile["raw_resume_text"] = text
         return profile
 
@@ -194,8 +192,7 @@ Resume text:
             )
             data = resp.json()
 
-        content = data.get("result", {}).get("content", [{}])[0].get("text", "{}")
-        extracted = json.loads(content)
+        extracted = _parse_mcp_result(data)
         text = extracted.get("text", "")
         return await self._parse_text(text)
 

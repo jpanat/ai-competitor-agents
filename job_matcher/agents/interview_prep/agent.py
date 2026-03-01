@@ -30,6 +30,7 @@ from job_matcher.shared.config import (
     MAX_TOKENS,
     TAVILY_API_KEY,
 )
+from job_matcher.shared.models import _extract_json
 
 logger = logging.getLogger(__name__)
 claude = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -149,8 +150,7 @@ Include at least 8 questions: mix of behavioral (4), technical (3), situational 
             }],
         )
 
-        raw = re.sub(r"```(?:json)?", "", response.content[0].text).strip().rstrip("```").strip()
-        kit = json.loads(raw)
+        kit = _extract_json(response.content[0].text)
         # Inject live company research if we fetched it
         if company_research and not kit.get("company_research"):
             kit["company_research"] = company_research

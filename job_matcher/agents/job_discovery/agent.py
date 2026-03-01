@@ -32,6 +32,7 @@ from job_matcher.shared.config import (
     MAX_TOKENS,
     MCP_URLS,
 )
+from job_matcher.shared.models import _extract_json, _parse_mcp_result
 
 logger = logging.getLogger(__name__)
 claude = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -128,8 +129,7 @@ Return ONLY a JSON array of 4 concise search strings, e.g.:
 """,
             }],
         )
-        raw = re.sub(r"```(?:json)?", "", response.content[0].text).strip().rstrip("```").strip()
-        return json.loads(raw)
+        return _extract_json(response.content[0].text)
 
     async def _call_board(
         self, board: str, query: str, location: str, remote_ok: bool, n: int
@@ -155,8 +155,7 @@ Return ONLY a JSON array of 4 concise search strings, e.g.:
             )
             data = resp.json()
 
-        content = data.get("result", {}).get("content", [{}])[0].get("text", "{}")
-        return json.loads(content)
+        return _parse_mcp_result(data)
 
     async def _store_job(self, job: dict) -> None:
         async with httpx.AsyncClient(timeout=10) as http:

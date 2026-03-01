@@ -4,9 +4,39 @@ All agents and MCP servers use these types to ensure type-safe inter-agent commu
 """
 
 from __future__ import annotations
+import json
+import re
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from enum import Enum
+
+
+def _extract_json(text: str):
+    """
+    Robustly extract and parse the first JSON object or array from LLM output.
+    Handles prose preamble/postamble that Claude sometimes adds despite instructions.
+    """
+    text = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
+    obj_i = text.find('{')
+    arr_i = text.find('[')
+    if obj_i == -1 and arr_i == -1:
+        return json.loads(text)  # raises naturally with a useful message
+    if arr_i == -1 or (obj_i >= 0 and obj_i < arr_i):
+        return json.loads(text[obj_i: text.rfind('}') + 1])
+    return json.loads(text[arr_i: text.rfind(']') + 1])
+
+
+def _parse_mcp_result(data: dict):
+    """
+    Extract and parse JSON from an MCP tool response dict.
+    Raises RuntimeError if the tool returned isError=true.
+    """
+    result = data.get("result", {})
+    content_list = result.get("content") or [{}]
+    text = content_list[0].get("text", "{}") if content_list else "{}"
+    if result.get("isError"):
+        raise RuntimeError(f"MCP tool error: {text[:300]}")
+    return _extract_json(text)
 
 
 # ---------------------------------------------------------------------------

@@ -27,6 +27,7 @@ from job_matcher.shared.config import (
     GAP_ANALYSIS_PORT,
     MAX_TOKENS,
 )
+from job_matcher.shared.models import _extract_json
 
 logger = logging.getLogger(__name__)
 claude = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -139,8 +140,7 @@ Return ONLY valid JSON matching this schema:
             }],
         )
 
-        raw = re.sub(r"```(?:json)?", "", response.content[0].text).strip().rstrip("```").strip()
-        return json.loads(raw)
+        return _extract_json(response.content[0].text)
 
 
 agent = GapAnalysisAgent()

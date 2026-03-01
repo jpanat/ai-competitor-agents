@@ -33,6 +33,7 @@ from job_matcher.shared.config import (
     MAX_TOKENS,
     TOP_N_MATCHES,
 )
+from job_matcher.shared.models import _extract_json
 
 logger = logging.getLogger(__name__)
 claude = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -158,8 +159,7 @@ Return ONLY a JSON array (one object per job):
             }],
         )
 
-        raw = re.sub(r"```(?:json)?", "", response.content[0].text).strip().rstrip("```").strip()
-        scored = json.loads(raw)
+        scored = _extract_json(response.content[0].text)
 
         # Merge scores back into full job objects
         job_by_id = {j.get("job_id", ""): j for j in jobs}

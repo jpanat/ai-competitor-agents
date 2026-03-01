@@ -30,6 +30,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from job_matcher.shared.config import ANTHROPIC_API_KEY, DEFAULT_MODEL, LINKEDIN_MCP_PORT
+from job_matcher.shared.models import _extract_json
 
 logger = logging.getLogger(__name__)
 
@@ -106,10 +107,7 @@ async def _llm_parse(prompt: str) -> dict:
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
     )
-    raw = response.content[0].text
-    # Strip markdown fences if present
-    raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("```").strip()
-    return json.loads(raw)
+    return _extract_json(response.content[0].text)
 
 
 async def fetch_linkedin_profile(linkedin_url: str, include_contact: bool = False) -> dict:
