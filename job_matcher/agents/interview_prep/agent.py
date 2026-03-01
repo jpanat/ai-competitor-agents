@@ -19,7 +19,7 @@ import logging
 import re
 from typing import Any, Dict
 
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 
 from job_matcher.a2a.protocol import AgentCard, AgentCapabilities, AgentSkill, Task
 from job_matcher.a2a.server import BaseA2AAgent
@@ -33,7 +33,7 @@ from job_matcher.shared.config import (
 from job_matcher.shared.models import _extract_json
 
 logger = logging.getLogger(__name__)
-claude = Anthropic(api_key=ANTHROPIC_API_KEY)
+claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
 class InterviewPrepAgent(BaseA2AAgent):
@@ -81,7 +81,7 @@ class InterviewPrepAgent(BaseA2AAgent):
         # Optionally fetch fresh company info via Tavily
         company_research = await self._research_company(job.get("company", ""))
 
-        response = claude.messages.create(
+        response = await claude.messages.create(
             model=DEFAULT_MODEL,
             max_tokens=MAX_TOKENS,
             messages=[{

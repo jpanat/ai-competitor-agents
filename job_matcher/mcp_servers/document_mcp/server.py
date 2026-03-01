@@ -18,7 +18,7 @@ import logging
 import re
 import textwrap
 
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -29,7 +29,7 @@ from job_matcher.shared.config import (
 )
 
 logger = logging.getLogger(__name__)
-client = Anthropic(api_key=ANTHROPIC_API_KEY)
+client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ async def extract_text_from_pdf(pdf_b64: str) -> dict:
         pass
 
     # Fallback: send to Claude with vision
-    response = client.messages.create(
+    response = await client.messages.create(
         model=DEFAULT_MODEL,
         max_tokens=4096,
         messages=[{
@@ -194,7 +194,7 @@ async def render_cover_letter(cover_letter_json: dict) -> dict:
 
 
 async def diff_resumes(original: str, customized: str) -> dict:
-    response = client.messages.create(
+    response = await client.messages.create(
         model=DEFAULT_MODEL,
         max_tokens=2048,
         messages=[{

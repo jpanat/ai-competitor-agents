@@ -22,8 +22,14 @@ def _extract_json(text: str):
     if obj_i == -1 and arr_i == -1:
         return json.loads(text)  # raises naturally with a useful message
     if arr_i == -1 or (obj_i >= 0 and obj_i < arr_i):
-        return json.loads(text[obj_i: text.rfind('}') + 1])
-    return json.loads(text[arr_i: text.rfind(']') + 1])
+        end = text.rfind('}')
+        if end == -1 or end < obj_i:
+            return json.loads(text)  # no closing brace — let json raise clearly
+        return json.loads(text[obj_i: end + 1])
+    end = text.rfind(']')
+    if end == -1 or end < arr_i:
+        return json.loads(text)  # no closing bracket — let json raise clearly
+    return json.loads(text[arr_i: end + 1])
 
 
 def _parse_mcp_result(data: dict):

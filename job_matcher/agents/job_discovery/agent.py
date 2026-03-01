@@ -20,7 +20,7 @@ import re
 from typing import Any, Dict, List
 
 import httpx
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 
 from job_matcher.a2a.protocol import AgentCard, AgentCapabilities, AgentSkill, Task
 from job_matcher.a2a.server import BaseA2AAgent
@@ -35,7 +35,7 @@ from job_matcher.shared.config import (
 from job_matcher.shared.models import _extract_json, _parse_mcp_result
 
 logger = logging.getLogger(__name__)
-claude = Anthropic(api_key=ANTHROPIC_API_KEY)
+claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
 class JobDiscoveryAgent(BaseA2AAgent):
@@ -113,7 +113,7 @@ class JobDiscoveryAgent(BaseA2AAgent):
         skills = profile.get("skills", [])[:10]
         desired = profile.get("desired_roles", [])
 
-        response = claude.messages.create(
+        response = await claude.messages.create(
             model=DEFAULT_MODEL,
             max_tokens=512,
             messages=[{

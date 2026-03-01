@@ -18,7 +18,7 @@ import re
 from typing import Any, Dict
 
 import httpx
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 
 from job_matcher.a2a.protocol import AgentCard, AgentCapabilities, AgentSkill, Task
 from job_matcher.a2a.server import BaseA2AAgent
@@ -32,7 +32,7 @@ from job_matcher.shared.config import (
 from job_matcher.shared.models import _extract_json, _parse_mcp_result
 
 logger = logging.getLogger(__name__)
-claude = Anthropic(api_key=ANTHROPIC_API_KEY)
+claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
 class ProfileParserAgent(BaseA2AAgent):
@@ -122,7 +122,7 @@ class ProfileParserAgent(BaseA2AAgent):
 
     async def _parse_text(self, text: str) -> Dict[str, Any]:
         logger.info("Parsing resume text (%d chars)", len(text))
-        response = claude.messages.create(
+        response = await claude.messages.create(
             model=DEFAULT_MODEL,
             max_tokens=MAX_TOKENS,
             messages=[{

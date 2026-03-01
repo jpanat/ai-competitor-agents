@@ -24,7 +24,7 @@ import re
 from typing import Any
 
 import httpx
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -97,12 +97,12 @@ TOOLS: list[dict] = [
 # Tool implementations
 # ---------------------------------------------------------------------------
 
-client = Anthropic(api_key=ANTHROPIC_API_KEY)
+client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
 async def _llm_parse(prompt: str) -> dict:
     """Use Claude to extract structured data from free-form text."""
-    response = client.messages.create(
+    response = await client.messages.create(
         model=DEFAULT_MODEL,
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
@@ -135,19 +135,18 @@ async def fetch_linkedin_profile(linkedin_url: str, include_contact: bool = Fals
 
     return await _llm_parse(
         f"""Extract a structured LinkedIn profile from the text below.
-Return ONLY valid JSON matching this schema:
+Return ONLY valid JSON — no markdown, no commentary, no refusals.
+If the text is a placeholder or contains no real profile data, return the schema
+with empty strings, empty arrays, and 0 for numeric fields instead of refusing.
+
 {{
-  "full_name": "string",
-  "headline": "string",
-  "location": "string",
-  "summary": "string",
-  "skills": ["skill1", "skill2"],
-  "experience": [
-    {{"company":"","title":"","start_date":"","end_date":null,"description":"","skills_used":[],"achievements":[]}}
-  ],
-  "education": [
-    {{"institution":"","degree":"","field_of_study":"","end_year":null}}
-  ],
+  "full_name": "",
+  "headline": "",
+  "location": "",
+  "summary": "",
+  "skills": [],
+  "experience": [],
+  "education": [],
   "certifications": [],
   "languages": [],
   "years_of_experience": 0

@@ -28,7 +28,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 import httpx
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -47,7 +47,7 @@ from job_matcher.shared.config import (
 )
 
 logger = logging.getLogger(__name__)
-claude = Anthropic(api_key=ANTHROPIC_API_KEY)
+claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
 # ---------------------------------------------------------------------------
