@@ -158,10 +158,14 @@ Return ONLY valid JSON — no markdown, no commentary — matching this exact sc
   ],
   "certifications": [{{"name":"string","issuer":"string","year":null}}],
   "languages": ["string"],
-  "years_of_experience": 0.0,
+  "years_of_experience": 4.5,
   "current_title": "string",
   "raw_resume_text": ""
 }}
+
+IMPORTANT rules:
+- "years_of_experience": calculate the total years worked across all roles by summing (end_date - start_date) for each job. Use today's date (2026) for roles still current. This must be a real non-zero float if there is any work history.
+- "current_title": the most recent job title.
 
 Resume text:
 {text[:6000]}""",

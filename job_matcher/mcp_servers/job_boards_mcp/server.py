@@ -91,6 +91,30 @@ TOOLS: list[dict] = [
         },
     },
     {
+        "name": "search_arbeitnow",
+        "description": "Search Arbeitnow for remote/international job listings (free, no API key required).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "max_results": {"type": "integer", "default": 10},
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "search_remoteok",
+        "description": "Search RemoteOK for remote job listings (free, no API key required).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "max_results": {"type": "integer", "default": 10},
+            },
+            "required": ["query"],
+        },
+    },
+    {
         "name": "get_job_details",
         "description": "Fetch the full job description from a job listing URL.",
         "inputSchema": {
@@ -164,22 +188,24 @@ async def _jsearch(query: str, location: str, max_results: int, **filters) -> li
 async def _tavily_job_search(query: str, location: str, source: str, max_results: int) -> list[dict]:
     """Fallback: use Tavily web search to find job listings."""
     if not TAVILY_API_KEY:
-        return _mock_jobs(query, location, source, max_results)
+        return []
 
-    site_map = {
-        "indeed": "site:indeed.com",
-        "glassdoor": "site:glassdoor.com",
-        "linkedin": "site:linkedin.com/jobs",
-    }
-    site_filter = site_map.get(source, "")
-    search_q = f"{query} {location} jobs {site_filter}".strip()
+    # Broad query — site: filters often return 0 results on the free tier
+    search_q = f"{query} job openings hiring"
+    if location:
+        search_q += f" {location}"
 
-    async with httpx.AsyncClient(timeout=15) as http:
-        resp = await http.post(
-            "https://api.tavily.com/search",
-            json={"api_key": TAVILY_API_KEY, "query": search_q, "max_results": max_results},
-        )
-        data = resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=15) as http:
+            resp = await http.post(
+                "https://api.tavily.com/search",
+                json={"api_key": TAVILY_API_KEY, "query": search_q, "max_results": max_results},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.warning("Tavily job search error: %s", exc)
+        return []
 
     jobs = []
     for result in data.get("results", []):
@@ -197,6 +223,80 @@ async def _tavily_job_search(query: str, location: str, source: str, max_results
             "apply_url": result.get("url", ""),
             "posted_date": "",
             "source": source,
+        })
+    return jobs
+
+
+async def _arbeitnow_search(query: str, max_results: int) -> list[dict]:
+    """
+    Arbeitnow public API — completely free, no API key required.
+    Covers thousands of remote/international tech jobs.
+    https://www.arbeitnow.com/api/job-board-api
+    """
+    try:
+        params = {"search": query, "page": 1}
+        async with httpx.AsyncClient(timeout=15, headers={"User-Agent": "JobMatcherBot/1.0"}) as http:
+            resp = await http.get("https://www.arbeitnow.com/api/job-board-api", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.warning("Arbeitnow search error: %s", exc)
+        return []
+
+    jobs = []
+    for item in data.get("data", [])[:max_results]:
+        jobs.append({
+            "job_id": str(uuid.uuid4()),
+            "title": item.get("title", ""),
+            "company": item.get("company_name", ""),
+            "location": item.get("location", "Remote"),
+            "work_mode": "remote" if item.get("remote") else "on_site",
+            "job_type": (item.get("job_types") or ["full_time"])[0].replace("-", "_"),
+            "salary_min": None,
+            "salary_max": None,
+            "description": item.get("description", "")[:2000],
+            "required_skills": item.get("tags", []),
+            "apply_url": item.get("url", ""),
+            "posted_date": str(item.get("created_at", "")),
+            "source": "arbeitnow",
+        })
+    return jobs
+
+
+async def _remoteok_search(query: str, max_results: int) -> list[dict]:
+    """
+    RemoteOK public API — completely free, no API key required.
+    https://remoteok.com/api
+    """
+    try:
+        tag = query.split()[0].lower()  # RemoteOK searches by tag
+        async with httpx.AsyncClient(timeout=15, headers={"User-Agent": "JobMatcherBot/1.0"}) as http:
+            resp = await http.get(f"https://remoteok.com/api?tag={tag}")
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.warning("RemoteOK search error: %s", exc)
+        return []
+
+    jobs = []
+    # First item is a legal/meta notice — skip it
+    for item in data[1:max_results + 1]:
+        if not isinstance(item, dict) or not item.get("position"):
+            continue
+        jobs.append({
+            "job_id": str(uuid.uuid4()),
+            "title": item.get("position", ""),
+            "company": item.get("company", ""),
+            "location": item.get("location", "Remote"),
+            "work_mode": "remote",
+            "job_type": "full_time",
+            "salary_min": None,
+            "salary_max": None,
+            "description": item.get("description", "")[:2000],
+            "required_skills": item.get("tags", []),
+            "apply_url": item.get("url", "") or item.get("apply_url", ""),
+            "posted_date": item.get("date", ""),
+            "source": "remoteok",
         })
     return jobs
 
@@ -231,6 +331,8 @@ async def search_indeed(query: str, location: str = "", max_results: int = 10, r
     jobs = await _jsearch(query, location, max_results, remote_only=remote_only)
     if not jobs:
         jobs = await _tavily_job_search(query, location, "indeed", max_results)
+    if not jobs:
+        jobs = await _arbeitnow_search(query, max_results)
     return {"jobs": jobs, "source": "indeed", "total": len(jobs)}
 
 
@@ -238,6 +340,8 @@ async def search_glassdoor(query: str, location: str = "", max_results: int = 10
     jobs = await _jsearch(query, location, max_results)
     if not jobs:
         jobs = await _tavily_job_search(query, location, "glassdoor", max_results)
+    if not jobs:
+        jobs = await _remoteok_search(query, max_results)
     return {"jobs": jobs, "source": "glassdoor", "total": len(jobs)}
 
 
@@ -248,7 +352,21 @@ async def search_linkedin_jobs(
     jobs = await _jsearch(query, location, max_results, remote_only=remote_only)
     if not jobs:
         jobs = await _tavily_job_search(query, location, "linkedin", max_results)
+    if not jobs:
+        jobs = await _arbeitnow_search(query, max_results)
     return {"jobs": jobs, "source": "linkedin", "total": len(jobs)}
+
+
+async def search_arbeitnow(query: str, max_results: int = 10) -> dict:
+    """Free job search via Arbeitnow — no API key required."""
+    jobs = await _arbeitnow_search(query, max_results)
+    return {"jobs": jobs, "source": "arbeitnow", "total": len(jobs)}
+
+
+async def search_remoteok(query: str, max_results: int = 10) -> dict:
+    """Free remote job search via RemoteOK — no API key required."""
+    jobs = await _remoteok_search(query, max_results)
+    return {"jobs": jobs, "source": "remoteok", "total": len(jobs)}
 
 
 async def get_job_details(url: str, source: str = "") -> dict:
@@ -274,6 +392,8 @@ TOOL_MAP = {
     "search_indeed": search_indeed,
     "search_glassdoor": search_glassdoor,
     "search_linkedin_jobs": search_linkedin_jobs,
+    "search_arbeitnow": search_arbeitnow,
+    "search_remoteok": search_remoteok,
     "get_job_details": get_job_details,
 }
 

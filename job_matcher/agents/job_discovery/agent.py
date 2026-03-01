@@ -78,11 +78,15 @@ class JobDiscoveryAgent(BaseA2AAgent):
         queries = await self._generate_queries(profile)
         logger.info("Generated %d search queries", len(queries))
 
-        # Step 2: Fan out to all three job boards in parallel
+        # Step 2: Fan out to all five job boards (3 paid/Tavily + 2 always-free) in parallel
+        paid_boards = ["indeed", "glassdoor", "linkedin"]
+        free_boards = ["arbeitnow", "remoteok"]
+        all_boards = paid_boards + free_boards
         search_tasks = []
         for q in queries:
-            for board in ["indeed", "glassdoor", "linkedin"]:
-                search_tasks.append(self._call_board(board, q, location, remote_ok, max_jobs // (len(queries) * 3) + 1))
+            n_per = max_jobs // (len(queries) * len(all_boards)) + 1
+            for board in all_boards:
+                search_tasks.append(self._call_board(board, q, location, remote_ok, n_per))
 
         results = await asyncio.gather(*search_tasks, return_exceptions=True)
 
@@ -138,11 +142,17 @@ Return ONLY a JSON array of 4 concise search strings, e.g.:
             "indeed": "search_indeed",
             "glassdoor": "search_glassdoor",
             "linkedin": "search_linkedin_jobs",
+            "arbeitnow": "search_arbeitnow",
+            "remoteok": "search_remoteok",
         }
         tool = tool_map[board]
-        args: dict = {"query": query, "location": location, "max_results": n}
-        if board in ("indeed", "linkedin"):
-            args["remote_only"] = False  # get both; filter later if needed
+        # Free boards (arbeitnow, remoteok) only accept query + max_results
+        if board in ("arbeitnow", "remoteok"):
+            args: dict = {"query": query, "max_results": n}
+        else:
+            args = {"query": query, "location": location, "max_results": n}
+            if board in ("indeed", "linkedin"):
+                args["remote_only"] = False  # get both; filter later if needed
 
         async with httpx.AsyncClient(timeout=30) as http:
             resp = await http.post(
